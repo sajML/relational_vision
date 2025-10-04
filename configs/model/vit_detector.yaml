@@ -1,0 +1,25 @@
+backbone:
+  type:   owlvit                       # {owlvit, dino_v2}
+  hf_id:  google/owlvit-base-patch32  # or {google/owlvit-large-patch14 ,google/owlvit-base-patch32, facebook/dinov2-base}
+  force_cpu:   True                    # set false for GPU usage
+  return_grid: True                    # true for 4D output; falls back to [B,N,1,C] if not square
+  interpolate_pos_encoding: true       # interpolate pos. enc. if input size differs from training  
+
+# Token head
+head:
+  type: owlvit_reuse              # {mlp_token, owlvit_heads_only}
+  num_classes: 150
+  sigmoid_boxes: true
+  dropout: 0.1
+  hf_id:  google/owlvit-base-patch32  # same as backbone
+  device: cpu                          # {cpu, cuda}
+  open_vocab_file: ./dataset/vg150/annotations/object_synsets_150.json  # Relative path, will be resolved dynamically
+
+
+rel_attn:
+  top_instances: 512                    # I ≤ N
+  top_pairs:     4096                   # K ≤ I*I
+  proj_depth:    2
+  rel_mlp_multiplier: 2
+  mask_self_pairs: True
+  tau: 1                            # temperature for scaling dot products in rel attn

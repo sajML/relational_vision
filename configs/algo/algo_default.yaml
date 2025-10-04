@@ -1,0 +1,32 @@
+optimizer:
+  name: adamw
+  base_lr: 1.0e-4         # lower LR for stable training
+  weight_decay: 0.05
+  betas: [0.9, 0.999]
+  eps: 1.0e-6
+
+
+scheduler:
+  name: cosine
+  base_lr: 1.0e-4         # Match optimizer base_lr
+  final_lr: 1.0e-6
+  warmup_steps: 100
+
+
+loss:
+  class_weight: 2.0       # Object classification weight
+  box_weight: 5.0         # Bounding box L1 weight  
+  giou_weight: 2.0        # GIoU weight
+  eos_coef: 0.1           # End-of-sequence coefficient
+  ra_selfsup_weight: 1.0  # Relation attention self-supervision
+  pred_weight: 2.0        # Predicate classification weight
+  
+matcher:
+  cost_class: 2.0
+  cost_bbox: 0.2
+  cost_giou: 0.2
+
+open_vocab:
+  enabled: true           # true for use OV loss instead of DETR
+  temp_obj: 0.1          # Proper CLIP-style temperature (was 150.0!)
+  temp_pred: 0.1         # Proper CLIP-style temperature (was 50.0!)
