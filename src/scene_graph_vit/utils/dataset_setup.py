@@ -66,6 +66,27 @@ def setup_vg150_dataset(
     dataset_root = Path(dataset_root).resolve()
     images_dir = dataset_root / "images"
     
+    # Check for Kaggle dataset first
+    kaggle_path = os.environ.get("VG_DATASET_PATH")
+    if kaggle_path:
+        kaggle_images = Path(kaggle_path)
+        if kaggle_images.exists() and kaggle_images.is_dir():
+            print(f"✓ Using Kaggle dataset at: {kaggle_images}")
+            
+            # Create symlink or copy reference to Kaggle path
+            if not images_dir.exists():
+                print(f"→ Creating symlink: {images_dir} -> {kaggle_images}")
+                try:
+                    images_dir.symlink_to(kaggle_images)
+                except OSError:
+                    # If symlink fails (permissions), update the path expectation
+                    print(f"→ Symlink failed, dataset will use: {kaggle_images}")
+                    # Store the actual path for later use
+                    (dataset_root / "kaggle_images_path.txt").write_text(str(kaggle_images))
+            
+            print("✓ Kaggle dataset setup complete")
+            return
+    
     # Check if images directory exists and has files
     if images_dir.exists() and not force_download:
         image_files = list(images_dir.glob("*.jpg"))

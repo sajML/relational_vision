@@ -40,6 +40,7 @@ def check_kaggle_dataset():
     if kaggle_path.exists() and kaggle_path.is_dir():
         print(f"✓ Found Kaggle dataset at: {kaggle_path}")
         return str(kaggle_path)
+    print("✗ Kaggle dataset not found")
     return None
 
 def setup_dataset_path(cfg):
@@ -194,5 +195,4 @@ def main():
     return args.func(args)
 
 if __name__ == "__main__":
-    raise SystemExit(main())
     raise SystemExit(main())
