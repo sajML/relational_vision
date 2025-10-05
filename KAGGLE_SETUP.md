@@ -85,6 +85,9 @@ train:
 !git clone https://github.com/yourusername/relational_vision.git
 %cd relational_vision
 
+!git clone https://github.com/sajML/relational_vision
+%cd relational_vision
+
 # 3. Verify setup (optional but recommended)
 !python test_dataset_setup.py
 

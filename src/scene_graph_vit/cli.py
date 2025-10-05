@@ -18,6 +18,7 @@ import sys
 import json
 import argparse
 import subprocess
+import os
 from pathlib import Path
 
 import torch
@@ -30,11 +31,51 @@ from .torch_viz import main as viz_main
 def count_trainable(model: torch.nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+def check_kaggle_dataset():
+    """
+    Check if running on Kaggle with the Visual Genome dataset available.
+    Returns the dataset path if found, otherwise None.
+    """
+    kaggle_path = Path("/kaggle/input/the-visual-genome-dataset/images2")
+    if kaggle_path.exists() and kaggle_path.is_dir():
+        print(f"✓ Found Kaggle dataset at: {kaggle_path}")
+        return str(kaggle_path)
+    return None
+
+def setup_dataset_path(cfg):
+    """
+    Check for Kaggle dataset and update config accordingly.
+    If Kaggle path exists, override the dataset path in config.
+    """
+    kaggle_path = check_kaggle_dataset()
+    if kaggle_path:
+        # Set environment variable that can be used by other modules
+        os.environ["VG_DATASET_PATH"] = kaggle_path
+        
+        # Update config if it has dataset paths
+        if "data_resolved" in cfg:
+            if "root" in cfg["data_resolved"]:
+                cfg["data_resolved"]["root"] = kaggle_path
+            if "image_dir" in cfg["data_resolved"]:
+                cfg["data_resolved"]["image_dir"] = kaggle_path
+        
+        print(f"→ Using Kaggle dataset path: {kaggle_path}")
+    else:
+        print("→ Kaggle dataset not found, using configured paths")
+    
+    return cfg
+
 def cmd_train(argv):
     """
     Pass-through to train.main().
     """
     filtered_argv = [arg for arg in argv if arg and arg != '--']
+    
+    # Check for Kaggle dataset before training
+    kaggle_path = check_kaggle_dataset()
+    if kaggle_path:
+        os.environ["VG_DATASET_PATH"] = kaggle_path
+    
     # Build command to run torch_train.py as a module
     cmd = [sys.executable, "-m", "src.scene_graph_vit.torch_train"] + filtered_argv
     result = subprocess.run(cmd, cwd=Path.cwd())
@@ -46,6 +87,7 @@ def cmd_config(args):
     """
     cfg = load_cfg(args.base)
     cfg = resolve_cfg(cfg)
+    cfg = setup_dataset_path(cfg)
     validate_config(cfg)
     if args.save:
         out = Path(args.save)
@@ -108,6 +150,12 @@ def cmd_infer(argv):
     Pass-through to viz.main().
     """
     filtered_argv = [arg for arg in argv if arg and arg != '--']
+    
+    # Check for Kaggle dataset before inference
+    kaggle_path = check_kaggle_dataset()
+    if kaggle_path:
+        os.environ["VG_DATASET_PATH"] = kaggle_path
+    
     # Call viz.main with our argv list
     return viz_main(filtered_argv)
 
