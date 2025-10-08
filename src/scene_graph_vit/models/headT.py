@@ -171,6 +171,10 @@ class OwlViTReuseHeads(nn.Module):
         self.sigmoid_boxes = True  # OWL does sigmoid after bias
         self.freeze = True
 
+        # Determine device early
+        force_cpu = h.get("force_cpu", False)
+        self.device = torch.device("cpu" if force_cpu else ("cuda" if torch.cuda.is_available() else "cpu"))
+
         # Load HF model once; reuse its components
         self.hf = OwlViTForObjectDetection.from_pretrained(self.hf_id)
         self.class_head = self.hf.class_head
@@ -183,6 +187,13 @@ class OwlViTReuseHeads(nn.Module):
         # tokenizer + text tower to build query embeddings when a string list is provided
         self.tok = AutoTokenizer.from_pretrained(self.hf_id)
         self.text_model = self.hf.owlvit.text_model
+
+        # Move everything to the correct device
+        self.class_head = self.class_head.to(self.device)
+        self.box_head = self.box_head.to(self.device)
+        self.ln_img = self.ln_img.to(self.device)
+        self.text_model = self.text_model.to(self.device)
+        self.hf = self.hf.to(self.device)
 
         if self.freeze:
             for m in [self.class_head, self.box_head, self.ln_img, self.text_model]:
@@ -223,8 +234,12 @@ class OwlViTReuseHeads(nn.Module):
         """
         if not queries:
             # Q=0: class_head will output only EOS logit
-            return torch.empty(1, 0, self.hf.config.projection_dim), torch.zeros(1, 0, dtype=torch.bool)
+            empty_embeds = torch.empty(1, 0, self.hf.config.projection_dim, device=self.device)
+            empty_mask = torch.zeros(1, 0, dtype=torch.bool, device=self.device)
+            return empty_embeds, empty_mask
         tk = self.tok(queries, return_tensors="pt", padding=True)
+        # Move tokenized inputs to correct device
+        tk = {k: v.to(self.device) for k, v in tk.items()}
         out = self.text_model(**tk, output_hidden_states=True, return_dict=True)
         pooled = out.pooler_output  # [Q, D_text]
         # add batch dim and mask
@@ -240,7 +255,7 @@ class OwlViTReuseHeads(nn.Module):
         grid_hw: Optional[Tuple[int,int]] = None,
         open_vocab: Optional[List[str]] = None,
         token_indices: Optional[torch.Tensor] = None,
-        train: bool = False,  # Add this parameter
+        train: bool = False,
     ):
         assert tokens.ndim == 3, f"expected [B,N,C], got {tokens.shape}"
         B, N, C = tokens.shape
@@ -278,7 +293,7 @@ class OwlViTReuseHeads(nn.Module):
         else:
             q_embeds, q_mask = self._build_query_embeds(open_vocab)  # [1,Q,D] 
             # class_head returns (pred_logits, image_class_embeds)
-            logits, _ = self.class_head(image_embeds=image_feats, query_embeds=q_embeds , query_mask = q_mask)
+            logits, _ = self.class_head(image_embeds=image_feats, query_embeds=q_embeds, query_mask=q_mask)
 
         return {"boxes": pred_boxes, "logits": logits}
 
