@@ -36,7 +36,7 @@ def check_kaggle_dataset():
     Check if running on Kaggle with the Visual Genome dataset available.
     Returns the dataset path if found, otherwise None.
     """
-    kaggle_path = Path("/kaggle/input/the-visual-genome-dataset/images2")
+    kaggle_path = Path("/kaggle/input/the-visual-genome-dataset/images2/VG_100K_2")
     if kaggle_path.exists() and kaggle_path.is_dir():
         print(f"✓ Found Kaggle dataset at: {kaggle_path}")
         return str(kaggle_path)
